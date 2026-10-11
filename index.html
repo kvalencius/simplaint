@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PP48 — Simple Paint · p5.js</title>
+  <link rel="icon" href="data:,">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===================== HEADER / TOOLBAR ===================== -->
+  <nav class="nav">
+    <!-- Kiri: toggle sidebar + brand -->
+    <div class="nav-group nav-left">
+      <button class="icon-btn" id="btnSidebar" title="Buka / tutup Tools"
+              aria-label="Buka atau tutup sidebar Tools" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" fill="none"/>
+        </svg>
+      </button>
+      <div class="nav-brand">PP48 &middot; <span class="nav-title">Simple Paint</span></div>
+    </div>
+
+    <!-- Tengah: tool settings (dulu panel kanan) -->
+    <div class="nav-group nav-center" id="toolSettings">
+
+      <!-- Fill: swatch kecil di samping teks — sekali klik langsung color wheel -->
+      <span class="swatch-btn" title="Fill color" onclick="openColorPicker(event)">
+        Fill
+        <input type="color" class="color-swatch" id="fillInput" value="#3498db"
+               aria-label="Fill color" oninput="onFillInput(this.value)">
+      </span>
+
+      <div class="tb-wrap">
+        <button class="tb-btn" data-pop="popOutline" onclick="togglePop('popOutline')">
+          Outline <span class="tb-caret">&#9662;</span>
+        </button>
+        <div class="popover" id="popOutline">
+          <h4>Outline</h4>
+          <button class="pill-toggle" id="outlineToggle" onclick="toggleOutline()">Outline: OFF</button>
+          <div class="swatch-row" title="Outline color" onclick="openColorPicker(event)">
+            <span class="field-label">Outline Color</span>
+            <input type="color" class="color-swatch" id="outlineColorInput" value="#000000"
+                   aria-label="Outline color" oninput="onOutlineColorInput(this.value)">
+          </div>
+          <label class="field-label" for="strokeWeightInput">Stroke Width</label>
+          <input type="number" id="strokeWeightInput" value="2" min="1" max="40" oninput="onStrokeWeightInput(this.value)">
+        </div>
+      </div>
+
+      <div class="tb-wrap">
+        <button class="tb-btn" data-pop="popTransform" onclick="togglePop('popTransform')">
+          Transform <span class="tb-caret">&#9662;</span>
+        </button>
+        <div class="popover" id="popTransform">
+          <h4>Transform</h4>
+
+          <div class="row">
+            <label class="field-label">Rotation</label>
+            <span class="value" id="rotVal">0&deg;</span>
+          </div>
+          <input type="range" id="rotRange" min="-180" max="180" step="1" value="0" oninput="onRotateInput(this.value)">
+          <div class="row btn-row">
+            <button class="btn-ghost btn-sm" onclick="nudgeRotate(-15)">&larr; Rot</button>
+            <button class="btn-ghost btn-sm" onclick="nudgeRotate(15)">Rot &rarr;</button>
+          </div>
+
+          <div class="row">
+            <label class="field-label">Scale X</label>
+            <span class="value" id="sxVal">1.00</span>
+          </div>
+          <input type="range" id="sxRange" min="0.1" max="4" step="0.05" value="1" oninput="onScaleXInput(this.value)">
+
+          <div class="row">
+            <label class="field-label">Scale Y</label>
+            <span class="value" id="syVal">1.00</span>
+          </div>
+          <input type="range" id="syRange" min="0.1" max="4" step="0.05" value="1" oninput="onScaleYInput(this.value)">
+
+          <div class="row btn-row">
+            <button class="btn-ghost btn-sm" onclick="nudgeScale(0.9)">&minus; Scale</button>
+            <button class="btn-ghost btn-sm" onclick="nudgeScale(1.1)">+ Scale</button>
+            <button class="btn-ghost btn-sm" onclick="resetTransform()">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tb-wrap">
+        <button class="tb-btn" data-pop="popArc" onclick="togglePop('popArc')">
+          Arc <span class="tb-caret">&#9662;</span>
+        </button>
+        <div class="popover" id="popArc">
+          <h4>Arc Angle</h4>
+          <div class="row">
+            <label class="field-label">Start</label>
+            <span class="value" id="arcStartVal">0&deg;</span>
+          </div>
+          <input type="range" id="arcStartRange" min="0" max="360" step="1" value="0" oninput="onArcStartInput(this.value)">
+          <div class="row">
+            <label class="field-label">Stop</label>
+            <span class="value" id="arcEndVal">180&deg;</span>
+          </div>
+          <input type="range" id="arcEndRange" min="0" max="360" step="1" value="180" oninput="onArcEndInput(this.value)">
+        </div>
+      </div>
+
+      <div class="tb-wrap">
+        <button class="tb-btn" data-pop="popObject" onclick="togglePop('popObject')">
+          Object <span class="tb-caret">&#9662;</span>
+        </button>
+        <div class="popover" id="popObject">
+          <h4>Object</h4>
+          <div class="btn-row">
+            <button class="btn-ghost btn-sm" onclick="deleteSelected()">Delete Object</button>
+            <button class="btn-ghost btn-sm" onclick="clearCanvas()">Clear Canvas</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Kanan: aksi + help -->
+    <div class="nav-group nav-actions">
+      <button class="btn-ghost" onclick="triggerLoadImage()">Load Image</button>
+      <button class="btn-ghost" onclick="deleteSelected()">Delete</button>
+      <button class="btn-ghost" onclick="clearCanvas()">Clear</button>
+
+      <div class="tb-wrap">
+        <button class="icon-btn icon-info" data-pop="popHelp" title="Help"
+                aria-label="Help" onclick="togglePop('popHelp')">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M12 10.6v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            <circle cx="12" cy="7.6" r="1.15" fill="currentColor"/>
+          </svg>
+        </button>
+
+        <div class="popover popover-help" id="popHelp">
+          <h4>Help</h4>
+          <p class="hint" id="statusTool">Rectangle — tarik pada canvas untuk membuat shape.</p>
+          <ul class="shortcut-list">
+            <li><span>Enter</span> selesaikan polygon</li>
+            <li><span>Esc</span> batalkan bentuk berjalan</li>
+            <li><span>Del / Backspace</span> hapus object terpilih</li>
+            <li><span>Drag handle</span> sudut = resize, lingkaran atas = rotate</li>
+            <li><span>Space + drag</span> geser kanvas (pan)</li>
+            <li><span>Scroll wheel</span> zoom in / zoom out</li>
+            <li><span>Reset View</span> kembali ke zoom 100%</li>
+          </ul>
+        </div>
+      </div>
+
+      <input type="file" id="imageInput" accept="image/*" hidden>
+    </div>
+  </nav>
+
+  <!-- ===================== APP ===================== -->
+  <main class="app">
+
+    <!-- Sidebar kiri: daftar tool (bisa ditutup & di-scroll) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-scroll">
+          <div class="section">
+            <h3>Tools</h3>
+            <button class="tool" data-tool="hand"    onclick="setTool('hand')">Hand</button>
+            <button class="tool" data-tool="select"  onclick="setTool('select')">Select</button>
+            <button class="tool" data-tool="point"   onclick="setTool('point')">Point</button>
+            <button class="tool" data-tool="line"    onclick="setTool('line')">Line</button>
+            <button class="tool" data-tool="rect"    onclick="setTool('rect')">Rectangle</button>
+            <button class="tool" data-tool="ellipse" onclick="setTool('ellipse')">Ellipse</button>
+            <button class="tool" data-tool="triangle" onclick="setTool('triangle')">Triangle</button>
+            <button class="tool" data-tool="quad"    onclick="setTool('quad')">Quad</button>
+            <button class="tool" data-tool="arc"     onclick="setTool('arc')">Arc</button>
+            <button class="tool" data-tool="polygon" onclick="setTool('polygon')">Polygon</button>
+          </div>
+
+          <div class="section">
+            <h3>View</h3>
+            <div class="row">
+              <span class="value" id="zoomVal">100%</span>
+              <button class="btn-ghost btn-sm" onclick="resetView()">Reset View</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas -->
+    <section class="stage">
+      <div id="canvas-holder"></div>
+    </section>
+  </main>
+
+  <!-- Notifikasi bawah layar (fade in/out) -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Library p5.js -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/p5.min.js"></script>
+  <script src="sketch.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
